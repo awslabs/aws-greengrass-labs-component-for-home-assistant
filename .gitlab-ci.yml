@@ -1,0 +1,28 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: Apache-2.0
+
+image: python:3.9
+
+before_script:
+  - python --version
+  - pip install -r requirements.txt
+  - pylint --version
+  - pytest --version
+
+stages:
+  - Static Analysis
+  - Unit Tests
+
+pylint:
+  stage: Static Analysis
+  script:
+  - pylint artifacts libs tests *.py
+
+pytest:
+  stage: Unit Tests
+  script:
+  - pytest --junit-xml=junit.xml --cov=artifacts --cov=.
+  artifacts:
+    when: always
+    reports:
+      junit: junit.xml

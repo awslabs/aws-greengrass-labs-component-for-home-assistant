@@ -1,0 +1,40 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: Apache-2.0
+
+version: 0.2
+
+phases:
+  pre_build:
+    commands:
+      # Install pre-requisite tools
+      - pip3 install -r requirements.txt
+
+      # Log the versions of all tools
+      - python3 --version
+      - pylint --version
+      - pytest --version
+  
+  build:
+    commands:
+      # Perform static analysis on our Python source before we use it for anything else
+      - pylint artifacts libs tests *.py
+
+      # Run our unit tests 
+      - pytest --junit-xml=junit.xml --cov=artifacts --cov=.
+
+      # Create a component version
+      - python3 create_component_version.py 1.0.$CODEBUILD_BUILD_NUMBER $AWS_REGION
+
+  post_build:
+    commands:
+
+artifacts:
+  discard-paths: yes
+  files:
+    - build/**/*
+    - junit.xml
+
+reports:
+  UnitTestsReport:
+    files:
+      - junit.xml

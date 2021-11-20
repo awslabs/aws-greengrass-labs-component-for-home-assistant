@@ -1,0 +1,9 @@
+*.pem
+*.crt
+*.key
+build
+__pycache__
+.coverage
+htmlcov
+.vscode
+junit.xml

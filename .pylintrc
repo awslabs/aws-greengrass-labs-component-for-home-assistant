@@ -1,0 +1,20 @@
+[MESSAGES CONTROL]
+# These are too noisy in our humble scripts
+disable=C0103,    # Disable 'Constant name "args" doesn't conform to UPPER_CASE naming style (invalid-name)'
+      W0703       # Disable 'Catching too general exception Exception (broad-except)''
+
+[FORMAT]
+
+# Increase default line length
+max-line-length=120
+
+[BASIC]
+
+# Allow 'e' as a good variable name (for exceptions)
+good-names=i,
+           j,
+           k,
+           ex,
+           Run,
+           _,
+           e
