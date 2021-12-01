@@ -1,7 +1,7 @@
 *.pem
 *.crt
 *.key
-build
+greengrass-build
 __pycache__
 .coverage
 htmlcov

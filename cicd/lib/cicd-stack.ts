@@ -12,12 +12,11 @@ import sns = require('@aws-cdk/aws-sns');
 import events_targets = require('@aws-cdk/aws-events-targets');
 import events = require('@aws-cdk/aws-events');
 import { Effect, PolicyStatement } from '@aws-cdk/aws-iam';
+import * as gdkConfig from '../../gdk-config.json';
 
 enum Names {
     PREFIX_DASH = 'gg-ha-cicd',
     PREFIX_CAMEL = 'GgHaCicd',
-    COMPONENT = 'aws.greengrass.labs.HomeAssistant',
-    COMPONENT_BUCKET = 'greengrass-home-assistant',
     SECRET = 'greengrass-home-assistant'
 }
 
@@ -33,6 +32,10 @@ export class CicdStack extends cdk.Stack {
 
         const context = this.getContext();
 
+        // Extract configuration from GDK configuration to prevent mismatches
+        const componentName = Object.keys(gdkConfig['component'])[0];
+        const bucketName = gdkConfig['component'][componentName as keyof typeof gdkConfig['component']]['publish']['bucket'];
+        
         const buildProject = new codebuild.PipelineProject(this, `${Names.PREFIX_CAMEL}Build`, {
             projectName: `${Names.PREFIX_DASH}-build`,
             buildSpec: codebuild.BuildSpec.fromSourceFilename('cicd/buildspec.yaml'),
@@ -79,23 +82,18 @@ export class CicdStack extends cdk.Stack {
         // The build project needs some extra rights
         buildProject.addToRolePolicy(new PolicyStatement({
             effect: Effect.ALLOW,
-            actions: ['greengrass:GetComponent','greengrass:CreateComponentVersion'],
-            resources: [`arn:aws:greengrass:${this.region}:${this.account}:components:${Names.COMPONENT}`]
+            actions: ['greengrass:CreateComponentVersion','greengrass:ListComponentVersions'],
+            resources: [`arn:aws:greengrass:${this.region}:${this.account}:components:${componentName}`]
         }));
         buildProject.addToRolePolicy(new PolicyStatement({
             effect: Effect.ALLOW,
-            actions: ['s3:ListAllMyBuckets'],
-            resources: ['*']
-        }));
-        buildProject.addToRolePolicy(new PolicyStatement({
-            effect: Effect.ALLOW,
-            actions: ['s3:CreateBucket'],
-            resources: [`arn:aws:s3:::${Names.COMPONENT_BUCKET}-${this.account}-${this.region}`]
+            actions: ['s3:CreateBucket','s3:GetBucketLocation'],
+            resources: [`arn:aws:s3:::${bucketName}-${this.region}-${this.account}`]
         }));
         buildProject.addToRolePolicy(new PolicyStatement({
             effect: Effect.ALLOW,
             actions: ['s3:PutObject','s3:GetObject'],
-            resources: [`arn:aws:s3:::${Names.COMPONENT_BUCKET}-${this.account}-${this.region}/*`]
+            resources: [`arn:aws:s3:::${bucketName}-${this.region}-${this.account}/*`]
         }));
 
         // The deploy project needs some extra rights

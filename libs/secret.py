@@ -32,23 +32,25 @@ class Secret():
         if self.exists():
             try:
                 print('Updating the Home Assistant secret {}'.format(self.SECRET_NAME))
-                self.secretsmanager_client.update_secret(SecretId=self.SECRET_NAME,
-                                                         SecretString=secret_string,
-                                                         Description=self.SECRET_DESCRIPTION)
+                response = self.secretsmanager_client.update_secret(SecretId=self.SECRET_NAME,
+                                                                    SecretString=secret_string,
+                                                                    Description=self.SECRET_DESCRIPTION)
             except Exception as e:
                 print('Failed to update the Home Assistant secret\nException: {}'.format(e))
                 raise e
             print('Successfully updated the Home Assistant secret')
         else:
             try:
-                print('Creating the Home Assistant secret {}'.format(self.SECRET_NAME))
-                self.secretsmanager_client.create_secret(Name=self.SECRET_NAME,
-                                                         SecretString=secret_string,
-                                                         Description=self.SECRET_DESCRIPTION)
+                print('Creating Home Assistant secret {}'.format(self.SECRET_NAME))
+                response = self.secretsmanager_client.create_secret(Name=self.SECRET_NAME,
+                                                                    SecretString=secret_string,
+                                                                    Description=self.SECRET_DESCRIPTION)
             except Exception as e:
                 print('Failed to create the Home Assistant secret\nException: {}'.format(e))
                 raise e
             print('Successfully created the Home Assistant secret')
+
+        return response
 
     def exists(self):
         """ Determines whether the Home Assistant secret already exists in Secrets Manager """
