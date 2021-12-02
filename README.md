@@ -278,7 +278,7 @@ aws_iot_core_endpoint: 0123456789abcd.iot.ap-southeast-1.amazonaws.com
 Update the secret in Secrets Manager:
 
 ```bash
-python3 create_config_secret.py ap-southeast-1
+python3 create_config_secret.py
 Files to add to secret: ['secrets/secrets.yaml', 'secrets/mqtt/dc536a53c3fcbce54833f9d90ab3ef1bd54523b4f371f60a811c0970dc8d4d82-certificate.pem.crt', 'secrets/mqtt/dc536a53c3fcbce54833f9d90ab3ef1bd54523b4f371f60a811c0970dc8d4d82-private.pem.key', 'secrets/mqtt/AmazonRootCA1.pem']
 Updating the Home Assistant secret greengrass-home-assistant
 Successfully updated the Home Assistant secret
@@ -327,7 +327,7 @@ secrets/mqtt/dc536a53c3fcbce54833f9d90ab3ef1bd54523b4f371f60a811c0970dc8d4d82-pr
 Update the secrets in Secrets Manager:
 
 ```bash
-python3 create_config_secret.py ap-southeast-1
+python3 create_config_secret.py
 Files to add to secret: ['secrets/secrets.yaml', 'secrets/mqtt/dc536a53c3fcbce54833f9d90ab3ef1bd54523b4f371f60a811c0970dc8d4d82-certificate.pem.crt', 'secrets/mqtt/dc536a53c3fcbce54833f9d90ab3ef1bd54523b4f371f60a811c0970dc8d4d82-private.pem.key', 'secrets/mqtt/ca.pem']
 Updating the Home Assistant secret greengrass-home-assistant
 Successfully updated the Home Assistant secret
@@ -375,7 +375,7 @@ secrets/https/privkey.pem
 Update the secrets in Secrets Manager:
 
 ```bash
-python3 create_config_secret.py ap-southeast-1
+python3 create_config_secret.py
 Files to add to secret: ['secrets/secrets.yaml', 'secrets/https/fullchain.pem', 'secrets/https/privkey.pem']
 Updating the Home Assistant secret greengrass-home-assistant
 Successfully updated the Home Assistant secret
