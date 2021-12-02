@@ -1,7 +1,7 @@
 {
   "RecipeFormatVersion": "2020-01-25",
   "ComponentName": "aws.greengrass.labs.HomeAssistant",
-  "ComponentVersion": "$COMPONENT_VERSION",
+  "ComponentVersion": "COMPONENT_VERSION",
   "ComponentDescription": "Home Assistant",
   "ComponentPublisher": "Amazon",
   "ComponentConfiguration": {
@@ -55,7 +55,7 @@
           "URI": "docker:$DOCKER_IMAGE"
         },
         {
-          "URI": "s3://$BUCKET_NAME/$COMPONENT_VERSION/home-assistant.zip",
+          "URI": "s3://BUCKET_NAME/COMPONENT_VERSION/home-assistant.zip",
           "Unarchive": "ZIP",
           "Permission": {
             "Read": "ALL"

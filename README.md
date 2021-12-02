@@ -20,6 +20,7 @@ Using the Home Assistant [MQTT Integration](https://www.home-assistant.io/integr
   * [Developer Machine](#developer-machine)
     * [AWS CLI](#aws-cli)
     * [Python](#python)
+    * [GDK CLI](#gdk-cli)
     * [Bash](#bash)
 * [Getting Started](#getting-started)
   * [Quickstart](#quickstart)
@@ -61,12 +62,13 @@ As shown in **blue** on the architecture diagram, Home Assistant can use its [MQ
 | /cicd                         | CDK Typescript app for a CodePipeline CI/CD pipeline.                                                 |
 | /images                       | Images for README files.                                                                              |
 | /libs                         | Python libraries shared by Python scripts.                                                            |
-| /recipes                      | Greengrass V2 component recipe templates.                                                             |
-| /secrets                      | Home Assistant secrets (secrets.yaml and optional certificates)                                       |
+| /secrets                      | Home Assistant secrets (secrets.yaml and optional certificates).                                      |
 | /tests                        | Pytest unit tests.                                                                                    |
-| create_component_version.py   | Creates a new version of the Home Assistant component in the Greengrass cloud service.                |
 | create_config_secret.py       | Creates or updates the Home Assistant configuration secret in Secrets Manager.                        |
 | deploy_component_version.py   | Deploys a component version to the Greengrass core device target.                                     |
+| gdk_build.py                  | Custom build script for the Greengrass Development Kit (GDK) - Command Line Interface.                |
+| gdk-config.json               | Configuration for the Greengrass Development Kit (GDK) - Command Line Interface.                      |
+| recipe.json                   | Greengrass V2 component recipe template.                                                              |
 | quickstart.sh                 | Creates a secret, and creates and deploys a component version in a single operation.                  |
 
 # Requirements and Prerequisites
@@ -93,7 +95,7 @@ This component requires both **python3** and **pip3** to be installed on the cor
 
 ### Core Device Role
 
-This component downloads artifacts from an S3 bucket named **greengrass-home-assistant-ACCOUNT-REGION**. Therefore your Greengrass core device role must allow the **s3:GetObject** permission for this bucket. For more information: https://docs.aws.amazon.com/greengrass/v2/developerguide/device-service-role.html#device-service-role-access-s3-bucket
+Assuming the bucket name in **gdk-config.json** is left unchanged, this component downloads artifacts from an S3 bucket named **greengrass-home-assistant-REGION-ACCOUNT**. Therefore your Greengrass core device role must allow the **s3:GetObject** permission for this bucket. For more information: https://docs.aws.amazon.com/greengrass/v2/developerguide/device-service-role.html#device-service-role-access-s3-bucket
 
 Additionally, this component downloads sensitive Home Assistant configuration from Secrets Manager. Therefore your Greengrass core device role must also allow the **secretsmanager:GetSecretValue** permission for the **greengrass=home-assistant-ID** secret. 
 
@@ -108,7 +110,7 @@ Policy template to add to your device role (substituting correct values for ACCO
       "Action": [
         "s3:GetObject"
       ],
-      "Resource": "arn:aws:s3:::greengrass-home-assistant-ACCOUNT-REGION/*"
+      "Resource": "arn:aws:s3:::greengrass-home-assistant-REGION-ACCOUNT/*"
     },
     {
       "Effect": "Allow",
@@ -139,6 +141,14 @@ pip3 install -r requirements.txt
 
 Please consider to use a [virtual environment](https://docs.python.org/3/library/venv.html).
 
+### GDK CLI
+
+This component makes use of the [Greengrass Development Kit (GDK) - Command Line Interface (CLI)](https://github.com/aws-greengrass/aws-greengrass-gdk-cli). This can be installed as follows:
+
+```
+pip3 install git+https://github.com/aws-greengrass/aws-greengrass-gdk-cli.git
+```
+
 ### Bash
 
 The **quickstart.sh** script is a Bash script. If using a Windows machine, you will need a Bash environment. Alternatively you can run the Python scripts individually.
@@ -147,34 +157,31 @@ The **quickstart.sh** script is a Bash script. If using a Windows machine, you w
 
 Here we define two ways to get started: Quickstart or Slowstart.
 
-All scripts used should be compatible with Linux, Mac or Windows operating systems, provided a Bash environment is available.
+All scripts are compatible with Linux, Mac or Windows operating systems, provided a Bash environment is available.
 
 ## Quickstart
 
 The **quickstart.sh** bash script is supplied to help you get going fast. It rolls the constituent steps up into a single command.
 
-Before running the script, users must deploy Greengrass V2 to a physical machine, virtual machine or EC2 instance, meeting all of the prerequisites including [the requirements to run Docker containers using Docker Compose and Docker Hub](https://docs.aws.amazon.com/greengrass/v2/developerguide/run-docker-container.html).
+Before running the script, users must deploy Greengrass V2 to a physical machine, virtual machine or EC2 instance, meeting all of the prerequisites including [the requirements to run Docker containers using Docker Compose and Docker Hub](https://docs.aws.amazon.com/greengrass/v2/developerguide/run-docker-container.html). Addtionally, users must set the AWS region in **gdk-config.json**.
 
-It is not necessary to perform any Hme Assistant configuration changes. Out of the box, Home Assistant will be deployed with the latest stable version and with default configuration.
+It is not necessary to perform any Home Assistant configuration changes. Out of the box, Home Assistant will be deployed with the latest stable version and with default configuration.
 
 The Quickstart script will:
 
 1. Install required Python packages on your developer machine.
 2. Upload the default (null) secret configuration (**secrets.yaml**) to a secret in Secrets Manager, creating the secret.
-3. Create a new component version in Greengrass cloud services, with artifacts in an S3 bucket.
-4. Prompt you to add permissions for the configuration secret and artifacts bucket to the Greengrass core device role. 
-5. Deploy the new component version to the Greengrass core.
+3. Use GDK to build the component.
+4. Use GDK to publish a new component version to Greengrass cloud services and upload artifacts to an S3 bucket.
+5. Prompt you to add permissions for the configuration secret and artifacts bucket to the Greengrass core device role. 
+6. Deploy the new component version to the Greengrass core.
 
-The script accepts 3 arguments:
-
-1. AWS region.
-2. Component version. (Semantic **major.minor.patch**.)
-3. Greengrass Core device name.
+The script accepts 1 argument: the Greengrass Core device name.
 
 Example execution:
 
 ```
-bash quickstart.sh ap-southeast-1 1.0.0 MyCoreDeviceThingName
+bash quickstart.sh MyCoreDeviceThingName
 ```
 ## Slowstart
 
@@ -183,39 +190,43 @@ For any serious use of the component, Quickstart shall not be appropriate.
 ### Manual Deployment
 If not using Quickstart, you must perform the following steps:
 
-1. Deploy the Greengrass runtime to your machine, virtual machine or EC2 instance, meeting all of the prerequisites
+1. Deploy the Greengrass runtime to your machine, virtual machine or EC2 instance, meeting all of the prerequisites.
 2. Select your desired Home Assistant Container image and tag by modifying **artifacts/docker-compose.yml**.
 3. Configure Home Assistant by modifying the configuration YAML files in **artifacts/config** and **secrets** as desired. 
 4. Subject to your configuration, generate self-signed TLS certificates if required and add them to the **secrets** directory.
 5. If MQTT integration with AWS IoT Core or the Greengrass MQTT broker is configured, take the appropriate steps in the AWS cloud.
 6. Subject to your configuration, add any required MQTT-related certificates to the **secrets** directory.
-7. Run **create_config_secret.py** to create the configuration secret in Secrets Manager.
-8. Run **create_component_version.py** to create a component version in Greengrass cloud service, and upload artifacts to S3.
-9. Add permissions for the configuration secret and artifacts bucket to the Greengrass core device role. 
-10. Run **deploy_component_version.py** to deploy the new component version to your Greengrass device. 
+7. Set the AWS region in **gdk-config.json**.
+8. Run **create_config_secret.py** to create the configuration secret in Secrets Manager.
+9. Run **gdk component build** to build the component.
+10. Run **gdk component publish** to create a component version in Greengrass cloud service, and upload artifacts to S3.
+11. Add permissions for the configuration secret and artifacts bucket to the Greengrass core device role. 
+12. Run **deploy_component_version.py** to deploy the new component version to your Greengrass device. 
 
 For iterative configuration changes, repeat steps as appropriate.
 
 ### Example Execution
 
-Example of steps 7, 8 and 10:
+Example of steps 8, 9, 10 and 12:
 
 ```
-python3 create_config_secret.py ap-southeast-1
-python3 create_component_version.py 1.0.0 ap-southeast-1
-python3 deploy_component_version.py 1.0.0 ap-southeast-1 MyCoreDeviceThingName
+python3 create_config_secret.py
+gdk component build
+gdk component publish
+python3 deploy_component_version.py 1.0.0 MyCoreDeviceThingName
 ```
 
 This example:
 
-1. Operates in AWS region **ap-southeast-1**.
-2. Creates and deploys component version **1.0.0** to Greengrass core device **MyCoreDeviceThingName**.
+1. Creates a Secrets Manager secret in your account in the region specified in **gdk-config.json**.
+2. Builds the component and publishes it to your account in the region specified in **gdk-config.json**.
+2. Deploys the new component version to Greengrass core device **MyCoreDeviceThingName**.
 
 ### CI/CD Pipeline
 
 This repository offers a CodePipeline [CI/CD pipeline](cicd/README.md) as a CDK application. This can be optionally deployed to the same account as the Greengrass core.
 
-This CI/CD pipeline automates steps 8 and 10. With the pipeline deployed, users can make iterative configuration changes, update the configuration secret using **create_config_secret.py**, and then trigger the CI/CD pipeline to handle the rest.
+This CI/CD pipeline automates steps 9, 10 and 12. With the pipeline deployed, users can make iterative configuration changes, update the configuration secret using **create_config_secret.py**, and then trigger the CI/CD pipeline to handle the rest.
 
 # Home Assistant Configuration Tips
 
@@ -267,7 +278,7 @@ aws_iot_core_endpoint: 0123456789abcd.iot.ap-southeast-1.amazonaws.com
 Update the secret in Secrets Manager:
 
 ```bash
-python3 create_config_secret.py ap-southeast-1
+python3 create_config_secret.py
 Files to add to secret: ['secrets/secrets.yaml', 'secrets/mqtt/dc536a53c3fcbce54833f9d90ab3ef1bd54523b4f371f60a811c0970dc8d4d82-certificate.pem.crt', 'secrets/mqtt/dc536a53c3fcbce54833f9d90ab3ef1bd54523b4f371f60a811c0970dc8d4d82-private.pem.key', 'secrets/mqtt/AmazonRootCA1.pem']
 Updating the Home Assistant secret greengrass-home-assistant
 Successfully updated the Home Assistant secret
@@ -316,7 +327,7 @@ secrets/mqtt/dc536a53c3fcbce54833f9d90ab3ef1bd54523b4f371f60a811c0970dc8d4d82-pr
 Update the secrets in Secrets Manager:
 
 ```bash
-python3 create_config_secret.py ap-southeast-1
+python3 create_config_secret.py
 Files to add to secret: ['secrets/secrets.yaml', 'secrets/mqtt/dc536a53c3fcbce54833f9d90ab3ef1bd54523b4f371f60a811c0970dc8d4d82-certificate.pem.crt', 'secrets/mqtt/dc536a53c3fcbce54833f9d90ab3ef1bd54523b4f371f60a811c0970dc8d4d82-private.pem.key', 'secrets/mqtt/ca.pem']
 Updating the Home Assistant secret greengrass-home-assistant
 Successfully updated the Home Assistant secret
@@ -364,7 +375,7 @@ secrets/https/privkey.pem
 Update the secrets in Secrets Manager:
 
 ```bash
-python3 create_config_secret.py ap-southeast-1
+python3 create_config_secret.py
 Files to add to secret: ['secrets/secrets.yaml', 'secrets/https/fullchain.pem', 'secrets/https/privkey.pem']
 Updating the Home Assistant secret greengrass-home-assistant
 Successfully updated the Home Assistant secret

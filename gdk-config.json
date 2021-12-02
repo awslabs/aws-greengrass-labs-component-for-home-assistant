@@ -1,0 +1,20 @@
+{
+    "component" :{
+      "aws.greengrass.labs.HomeAssistant": {
+        "author": "Amazon",
+        "version": "NEXT_PATCH",
+        "build": {
+          "build_system": "custom",
+          "custom_build_command": [
+            "python3",
+            "gdk_build.py"
+          ]
+        },
+        "publish": {
+          "bucket": "greengrass-home-assistant",
+          "region": "us-east-1"
+        }
+      }
+    },
+    "gdk_version": "1.0.0"
+}

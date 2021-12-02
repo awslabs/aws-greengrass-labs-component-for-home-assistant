@@ -3,10 +3,10 @@
 
 """
 Deploys a component version to the Greengrass core device target. This should be
-called after create_component_version.py.
+called after "gdk component build" and "gdk component publish".
 
 Example execution:
-python3 deploy_component_version.py 1.0.0 ap-southeast-1 MyCoreDeviceThingName
+python3 deploy_component_version.py 1.0.0 MyCoreDeviceThingName
 """
 
 import argparse
@@ -14,15 +14,15 @@ import sys
 import time
 import boto3
 from libs.secret import Secret
+from libs.gdk_config import GdkConfig
 
 ACCOUNT = boto3.client('sts').get_caller_identity().get('Account')
-COMPONENT_NAME = 'aws.greengrass.labs.HomeAssistant'
 COMPONENT_DOCKER_APPLICATION_MANAGER = 'aws.greengrass.DockerApplicationManager'
 COMPONENT_SECRET_MANAGER = 'aws.greengrass.SecretManager'
 
 def get_newest_component_version(component_name):
     """ Gets the newest version of a component """
-    component_arn = 'arn:aws:greengrass:{}:aws:components:{}'.format(args.region, component_name)
+    component_arn = 'arn:aws:greengrass:{}:aws:components:{}'.format(gdk_config.region(), component_name)
 
     try:
         response = greengrassv2_client.list_component_versions(arn=component_arn)
@@ -79,15 +79,15 @@ def update_deployment_components(components):
     })
 
     # Add or update our component to the specified version
-    if COMPONENT_NAME not in components:
-        print('Adding {} {} to the deployment'.format(COMPONENT_NAME, args.version))
+    if gdk_config.name() not in components:
+        print('Adding {} {} to the deployment'.format(gdk_config.name(), args.version))
     else:
-        print('Updating deployment with {} {}'.format(COMPONENT_NAME, args.version))
-    components.update({COMPONENT_NAME: {'componentVersion': args.version}})
+        print('Updating deployment with {} {}'.format(gdk_config.name(), args.version))
+    components.update({gdk_config.name(): {'componentVersion': args.version}})
 
 def create_deployment(name, components):
-    """ Creates a deployment of the Home Assistant component to the given Greengrass core device """
-    thing_arn = 'arn:aws:iot:{}:{}:thing/{}'.format(args.region, ACCOUNT, args.coreDeviceThingName)
+    """ Creates a deployment of the component to the given Greengrass core device """
+    thing_arn = 'arn:aws:iot:{}:{}:thing/{}'.format(gdk_config.region(), ACCOUNT, args.coreDeviceThingName)
 
     try:
         response = greengrassv2_client.create_deployment(
@@ -124,15 +124,16 @@ def wait_for_deployment_to_finish(deploy_id):
         sys.exit(1)
 
 
-parser = argparse.ArgumentParser(description='Deploy a version of the {} component'.format(COMPONENT_NAME))
-parser.add_argument('version', help='Version of the component to be created (Example: 1.0.0)')
-parser.add_argument('region', help='AWS region (Example: us-east-1)')
+gdk_config = GdkConfig()
+
+parser = argparse.ArgumentParser(description='Deploy a version of the {} component'.format(gdk_config.name()))
+parser.add_argument('version', help='Version of the component to be deployed (Example: 1.0.0)')
 parser.add_argument('coreDeviceThingName', help='Greengrass core device to deploy to')
 args = parser.parse_args()
 
-greengrassv2_client = boto3.client('greengrassv2', region_name=args.region)
+greengrassv2_client = boto3.client('greengrassv2', region_name=gdk_config.region())
 
-secret = Secret(args.region)
+secret = Secret(gdk_config.region())
 secret_value = secret.get()
 
 print('Deploying version {} to {}'.format(args.version, args.coreDeviceThingName))
