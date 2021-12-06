@@ -43,7 +43,7 @@ def get_deployment_components(name):
     components = []
 
     for deployment in response['deployments']:
-        if deployment['deploymentName'] == name:
+        if deploymentName in deployment and deployment['deploymentName'] == name:
 
             try:
                 response = greengrassv2_client.get_deployment(deploymentId=deployment['deploymentId'])
