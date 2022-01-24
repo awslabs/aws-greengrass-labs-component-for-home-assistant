@@ -32,68 +32,83 @@ def get_newest_component_version(component_name):
 
     return response['componentVersions'][0]['componentVersion']
 
-def get_deployment_components(name):
+def get_deployment():
     """ Gets the details of the existing deployment """
+    thing_arn = 'arn:aws:iot:{}:{}:thing/{}'.format(gdk_config.region(), ACCOUNT, args.coreDeviceThingName)
+
     try:
-        response = greengrassv2_client.list_deployments()
+        # Get the latest deployment for the specified core device name
+        response = greengrassv2_client.list_deployments(
+            targetArn=thing_arn,
+            historyFilter='LATEST_ONLY',
+            maxResults=1
+        )
     except Exception as e:
         print('Failed to list deployments\nException: {}'.format(e))
         sys.exit(1)
 
-    components = []
+    # We expect to update an existing deployment, not create a new one
+    if len(response['deployments']) == 0:
+        print('No existing deployment for this Core Device. Abort!')
+        sys.exit(1)
 
-    for deployment in response['deployments']:
-        if 'deploymentName' in deployment.keys() and deployment['deploymentName'] == name:
+    # We expect at most one result in the list
+    deployment_id = response['deployments'][0]['deploymentId']
 
-            try:
-                response = greengrassv2_client.get_deployment(deploymentId=deployment['deploymentId'])
-                components = response['components']
-                break
-            except Exception as e:
-                print('Failed to get deployment\nException: {}'.format(e))
-                sys.exit(1)
+    try:
+        response = greengrassv2_client.get_deployment(deploymentId=deployment_id)
+    except Exception as e:
+        print('Failed to get deployment\nException: {}'.format(e))
+        sys.exit(1)
 
-    return components
+    return response
 
-def update_deployment_components(components):
-    """ Updates the existing components to the desired versions """
+def update_deployment(deployment):
+    """ Updates the current deplyment with the desired versions of the components """
 
     # If Docker Application manager is not in the deployment, add the latest version
-    if COMPONENT_DOCKER_APPLICATION_MANAGER not in components:
+    if COMPONENT_DOCKER_APPLICATION_MANAGER not in deployment['components']:
         version = get_newest_component_version(COMPONENT_DOCKER_APPLICATION_MANAGER)
         print('Adding {} {} to the deployment'.format(COMPONENT_DOCKER_APPLICATION_MANAGER, version))
-        components.update({COMPONENT_DOCKER_APPLICATION_MANAGER: {'componentVersion': version}})
+        deployment['components'].update({COMPONENT_DOCKER_APPLICATION_MANAGER: {'componentVersion': version}})
 
     # If Secret manager is not in the deployment, add the latest version
-    if COMPONENT_SECRET_MANAGER not in components:
+    if COMPONENT_SECRET_MANAGER not in deployment['components']:
         version = get_newest_component_version(COMPONENT_SECRET_MANAGER)
         print('Adding {} {} to the deployment'.format(COMPONENT_SECRET_MANAGER, version))
     else:
         # If it's already in the deployment, use the current version
-        version = components[COMPONENT_SECRET_MANAGER]['componentVersion']
+        version = deployment['components'][COMPONENT_SECRET_MANAGER]['componentVersion']
 
     # Ensure that Secret Manager is configured for the secret
-    components.update({COMPONENT_SECRET_MANAGER: {
+    deployment['components'].update({COMPONENT_SECRET_MANAGER: {
         'componentVersion': version,
         'configurationUpdate': {'merge': '{"cloudSecrets":[{"arn":"' + secret_value['ARN'] + '"}]}'}}
     })
 
     # Add or update our component to the specified version
-    if gdk_config.name() not in components:
+    if gdk_config.name() not in deployment['components']:
         print('Adding {} {} to the deployment'.format(gdk_config.name(), args.version))
     else:
         print('Updating deployment with {} {}'.format(gdk_config.name(), args.version))
-    components.update({gdk_config.name(): {'componentVersion': args.version}})
+    deployment['components'].update({gdk_config.name(): {'componentVersion': args.version}})
 
-def create_deployment(name, components):
+def create_deployment(deployment):
     """ Creates a deployment of the component to the given Greengrass core device """
-    thing_arn = 'arn:aws:iot:{}:{}:thing/{}'.format(gdk_config.region(), ACCOUNT, args.coreDeviceThingName)
+
+    # Give the deployment a name if it doesn't already have one
+    if 'deploymentName' in deployment:
+        deployment_name = deployment['deploymentName']
+    else:
+        deployment_name = 'Deployment for {}'.format(args.coreDeviceThingName)
 
     try:
+        # We deploy to a single Thing and hence without an IoT job configuration
+        # Deploy with default deployment policies and no tags
         response = greengrassv2_client.create_deployment(
-            targetArn=thing_arn,
-            deploymentName=name,
-            components=components
+            targetArn=deployment['targetArn'],
+            deploymentName=deployment_name,
+            components=deployment['components']
         )
     except Exception as e:
         print('Failed to create deployment\nException: {}'.format(e))
@@ -136,16 +151,15 @@ greengrassv2_client = boto3.client('greengrassv2', region_name=gdk_config.region
 secret = Secret(gdk_config.region())
 secret_value = secret.get()
 
-print('Deploying version {} to {}'.format(args.version, args.coreDeviceThingName))
+print('Deploying version {} to core device {}'.format(args.version, args.coreDeviceThingName))
 
-deployment_name='Deployment for {}'.format(args.coreDeviceThingName)
+# Get the latest (singe Thing) deployment for the specified core device
+current_deployment = get_deployment()
 
-# Get the components of the existing deployment (if the deployment already exists)
-deployment_components = get_deployment_components(deployment_name)
+# Update the components of the current deployment
+update_deployment(current_deployment)
 
-# Update the components of the existing deployment (or create if the deployment doesn't already exist)
-update_deployment_components(deployment_components)
-
-deployment_id = create_deployment(deployment_name, deployment_components)
-print('Deployment {} successfully created. Waiting for completion ...'.format(deployment_id))
-wait_for_deployment_to_finish(deployment_id)
+# Create a new deployment
+new_deployment_id = create_deployment(current_deployment)
+print('Deployment {} successfully created. Waiting for completion ...'.format(new_deployment_id))
+wait_for_deployment_to_finish(new_deployment_id)
