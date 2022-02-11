@@ -10,6 +10,7 @@ python3 deploy_component_version.py 1.0.0 MyCoreDeviceThingName
 """
 
 import argparse
+import json
 import sys
 import time
 import boto3
@@ -36,6 +37,8 @@ def get_deployment():
     """ Gets the details of the existing deployment """
     thing_arn = 'arn:aws:iot:{}:{}:thing/{}'.format(gdk_config.region(), ACCOUNT, args.coreDeviceThingName)
 
+    print('Searching for existing single Thing deployment for {}'.format(args.coreDeviceThingName))
+
     try:
         # Get the latest deployment for the specified core device name
         response = greengrassv2_client.list_deployments(
@@ -49,7 +52,7 @@ def get_deployment():
 
     # We expect to update an existing deployment, not create a new one
     if len(response['deployments']) == 0:
-        print('No existing deployment for this Core Device. Abort!')
+        print('No existing Thing deployment for this Core Device. Abort.')
         sys.exit(1)
 
     # We expect at most one result in the list
@@ -57,6 +60,11 @@ def get_deployment():
 
     try:
         response = greengrassv2_client.get_deployment(deploymentId=deployment_id)
+
+        if 'deploymentName' in response:
+            print('Found existing named deployment "{}"'.format(response['deploymentName']))
+        else:
+            print('Found existing unnamed deployment {}'.format(deployment_id))
     except Exception as e:
         print('Failed to get deployment\nException: {}'.format(e))
         sys.exit(1)
@@ -76,14 +84,22 @@ def update_deployment(deployment):
     if COMPONENT_SECRET_MANAGER not in deployment['components']:
         version = get_newest_component_version(COMPONENT_SECRET_MANAGER)
         print('Adding {} {} to the deployment'.format(COMPONENT_SECRET_MANAGER, version))
+        cloud_secrets = [{"arn": secret_value['ARN']}]
     else:
         # If it's already in the deployment, use the current version
         version = deployment['components'][COMPONENT_SECRET_MANAGER]['componentVersion']
+        merge_str = deployment['components'][COMPONENT_SECRET_MANAGER]['configurationUpdate']['merge']
+        cloud_secrets = json.loads(merge_str)['cloudSecrets']
 
-    # Ensure that Secret Manager is configured for the secret
+        # Add our secret to the list of configured secrets
+        if secret_value['ARN'] not in merge_str:
+            print('Adding secret {} to Secret Manager configuration'.format(secret_value['ARN']))
+            cloud_secrets.append({"arn": secret_value['ARN']})
+
+    # Update Secret Manager with the appropriate version and configuration
     deployment['components'].update({COMPONENT_SECRET_MANAGER: {
         'componentVersion': version,
-        'configurationUpdate': {'merge': '{"cloudSecrets":[{"arn":"' + secret_value['ARN'] + '"}]}'}}
+        'configurationUpdate': {'merge': '{"cloudSecrets":' + json.dumps(cloud_secrets) + '}'}}
     })
 
     # Add or update our component to the specified version
@@ -101,6 +117,7 @@ def create_deployment(deployment):
         deployment_name = deployment['deploymentName']
     else:
         deployment_name = 'Deployment for {}'.format(args.coreDeviceThingName)
+        print('Renaming deployment to "{}"'.format(deployment_name))
 
     try:
         # We deploy to a single Thing and hence without an IoT job configuration
@@ -151,9 +168,9 @@ greengrassv2_client = boto3.client('greengrassv2', region_name=gdk_config.region
 secret = Secret(gdk_config.region())
 secret_value = secret.get()
 
-print('Deploying version {} to core device {}'.format(args.version, args.coreDeviceThingName))
+print('Attempting deployment of version {} to core device {}'.format(args.version, args.coreDeviceThingName))
 
-# Get the latest (singe Thing) deployment for the specified core device
+# Get the latest (single Thing) deployment for the specified core device
 current_deployment = get_deployment()
 
 # Update the components of the current deployment
