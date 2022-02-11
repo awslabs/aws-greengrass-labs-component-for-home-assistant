@@ -22,6 +22,7 @@ Using the Home Assistant [MQTT Integration](https://www.home-assistant.io/integr
     * [Python](#python)
     * [GDK CLI](#gdk-cli)
     * [Bash](#bash)
+    * [jq](#jq)
 * [Getting Started](#getting-started)
   * [Quickstart](#quickstart)
   * [Slowstart](#slowstart)
@@ -36,6 +37,17 @@ Using the Home Assistant [MQTT Integration](https://www.home-assistant.io/integr
     * [AWS IoT Core](#aws-iot-core)
     * [Greengrass Moquette MQTT Broker](#greengrass-moquette-mqtt-broker)
   * [HTTPS](#https)
+* [Operations](#operations)
+  * [Clean Uninstall](#clean-uninstall)
+  * [Data Backup](#data-backup)
+* [Troubleshooting](#troubleshooting)
+  * [Troubleshooting Tools](#troubleshooting-tools)
+    * [Core Device Log Files](#core-device-log-files)
+    * [Greengrass CLI](#greengrass-cli)
+    * [Docker Container Logs](#docker-container-logs)
+  * [Common Failures](#common-failures)
+    * [Wrong Docker Image Architecture](#wrong-docker-image-architecture)
+    * [Secret Configuration Changes Not Deployed](#secret-configuration-changes-not-deployed)
 * [Development](#development)
   * [Static Analysis](#static-analysis)
   * [Unit Tests](#unit-tests)
@@ -141,6 +153,8 @@ pip3 install -r requirements.txt
 
 Please consider to use a [virtual environment](https://docs.python.org/3/library/venv.html).
 
+[Boto3](https://boto3.amazonaws.com/v1/documentation/api/latest/index.html) is included in the package dependencies and therefore your machine requires appropriate [credentials](https://boto3.amazonaws.com/v1/documentation/api/latest/guide/credentials.html).
+
 ### GDK CLI
 
 This component makes use of the [Greengrass Development Kit (GDK) - Command Line Interface (CLI)](https://github.com/aws-greengrass/aws-greengrass-gdk-cli). This can be installed as follows:
@@ -152,6 +166,17 @@ pip3 install git+https://github.com/aws-greengrass/aws-greengrass-gdk-cli.git
 ### Bash
 
 The **quickstart.sh** script is a Bash script. If using a Windows machine, you will need a Bash environment. Alternatively you can run the Python scripts individually.
+
+### jq
+
+The **jq** utility is used by **quickstart.sh**. Release packages for Linux, OS X and Windows are available on the [jq](https://stedolan.github.io/jq/) site.
+
+Alternatively, Ubuntu includes a **jq** package:
+
+```
+sudo apt update
+sudo apt install jq
+```
 
 # Getting Started
 
@@ -263,16 +288,16 @@ secrets/mqtt/dc536a53c3fcbce54833f9d90ab3ef1bd54523b4f371f60a811c0970dc8d4d82-pr
 Obtain the AWS IoT Core endpoint:
 
 ```bash
-aws iot describe-endpoint
+aws iot describe-endpoint --endpoint-type iot:Data-ATS
 {
-    "endpointAddress": "0123456789abcd.iot.ap-southeast-1.amazonaws.com"
+    "endpointAddress": "ENDPOINTID-ats.iot.REGION.amazonaws.com"
 }
 ```
 
 And add that to a secret in **secrets/secrets.yaml**:
 
 ```yaml
-aws_iot_core_endpoint: 0123456789abcd.iot.ap-southeast-1.amazonaws.com
+aws_iot_core_endpoint: ENDPOINTID-ats.iot.REGION.amazonaws.com
 ```
 
 Update the secret in Secrets Manager:
@@ -382,6 +407,65 @@ Successfully updated the Home Assistant secret
 ```
 
 And then create and deploy a new component version.
+
+# Operations
+
+## Clean Uninstall
+
+Removing this component from your deployment will not remove all vestiges from your Greengrass core device. Additional steps:
+
+- Remove any Home Assistant Docker images that have persisted.
+- Remove the working directory: **/greengrass/v2/work/aws.greengrass.labs.HomeAssistant**. This also deletes persistent data and settings.
+
+## Data Backup
+
+If this component is deployed with default settings, persistent data and settings are located in **/greengrass/v2/work/aws.greengrass.labs.HomeAssistant/config**.
+
+# Troubleshooting
+
+Tips for investigating failed deployments, or deployments that succeed but Home Assistant is still not working as expected.
+
+## Troubleshooting Tools
+
+### Core Device Log Files
+
+Detailed component logs can be found on the Core Device in **/greengrass/v2/logs/aws.greengrass.labs.HomeAssistant.log**.
+
+The Greengrass Core log file can be found at **/greengrass/v2/logs/greengrass.log**.
+
+For more information please refer to the Greengrass V2 documentation: https://docs.aws.amazon.com/greengrass/v2/developerguide/monitor-logs.html
+
+### Greengrass CLI
+
+Consider to install the [Greengrass Command Line Interface component](https://docs.aws.amazon.com/greengrass/v2/developerguide/gg-cli.html) to obtain greater visibility into the state of your core device.
+
+### Docker Container Logs
+
+The logs within the Docker container can be inspected as follows:
+
+```
+docker logs homeassistant
+```
+
+## Common Failures
+
+### Wrong Docker Image Architecture
+
+If a Docker image of the wrong architecture is deployed, it will fail to start. A message similar to the following indicates that the wrong architecture is being used:
+
+```
+standard_init_linux.go:228: exec user process caused: exec format error
+```
+
+This message will appear in **/greengrass/v2/logs/aws.greengrass.labs.HomeAssistant.log**. 
+
+To resolve incorrect architecture, please check the available architectures for the image tag. Image tags on DockerHub do not always support all architectures. Update **docker-compose.yml** and deploy a new version of the component.
+
+### Secret Configuration Changes Not Deployed
+
+The Greengrass Secret Manager component needs to fetch the configuration secret from the cloud, for any changes to **secrets.yaml** or the certificates to be seen by the Home Assistant component. The Secret Manager will not necessarily fetch the secret even when a new version of the component is deployed. Restart or reboot the core device to force a fetch.
+
+The deployed **secrets.yaml** can be found at **/greengrass/v2/work/aws.greengrass.labs.HomeAssistant/secrets.yaml**.
 
 # Development
 
