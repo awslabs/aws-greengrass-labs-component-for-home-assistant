@@ -48,6 +48,10 @@
         "Shutdown": {
           "RequiresPrivilege": true,
           "script": "docker-compose down"
+        },
+        "Recover": {
+          "RequiresPrivilege": true,
+          "script": "docker-compose down"       
         }
       },
       "Artifacts": [
