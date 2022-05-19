@@ -60,12 +60,12 @@ Synthesis and deployment of the stack requires the following context variables:
 Example synthesis:
 
 ```
-cdk synth -c RepositoryName=aws-greengrass-labs-component-for-home-assistant -c BranchName=main -c GreengrassCoreName=GGHomeAssistant
+cdk synth -c RepositoryName=aws-greengrass-labs-component-for-home-assistant -c BranchName=main -c GreengrassCoreName=raspberrypi4-ggv2
 ```
 ## Deploy the pipeline
 
 Example deployment:
 
 ```
-cdk deploy -c RepositoryName=aws-greengrass-labs-component-for-home-assistant -c BranchName=main -c GreengrassCoreName=GGHomeAssistant
+cdk deploy -c RepositoryName=aws-greengrass-labs-component-for-home-assistant -c BranchName=main -c GreengrassCoreName=raspberrypi4-ggv2
 ```
