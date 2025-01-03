@@ -39,7 +39,7 @@ export class CicdStack extends cdk.Stack {
             projectName: `${Names.PREFIX_DASH}-build`,
             buildSpec: codebuild.BuildSpec.fromSourceFilename('cicd/buildspec.yaml'),
             environment: {
-                buildImage: codebuild.LinuxBuildImage.STANDARD_5_0
+                buildImage: codebuild.LinuxBuildImage.STANDARD_7_0
             },
             timeout: cdk.Duration.minutes(5),
         });
@@ -48,7 +48,7 @@ export class CicdStack extends cdk.Stack {
             projectName: `${Names.PREFIX_DASH}-deploy`,
             buildSpec: codebuild.BuildSpec.fromSourceFilename('cicd/deployspec.yaml'),
             environment: {
-                buildImage: codebuild.LinuxBuildImage.STANDARD_5_0
+                buildImage: codebuild.LinuxBuildImage.STANDARD_7_0
             },
             timeout: cdk.Duration.minutes(5),
         });
