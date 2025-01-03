@@ -479,7 +479,7 @@ pylint artifacts libs tests *.py
 
 ## Unit Tests
 
-Unit tests are performed using [pytest](https://pytest.org/) and [moto](https://github.com/spulec/moto).
+Unit tests are performed using [pytest](https://pytest.org/).
 
 Example execution:
 

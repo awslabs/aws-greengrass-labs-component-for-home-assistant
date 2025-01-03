@@ -1,7 +1,8 @@
 [MESSAGES CONTROL]
 # These are too noisy in our humble scripts
 disable=C0103,    # Disable 'Constant name "args" doesn't conform to UPPER_CASE naming style (invalid-name)'
-      W0703       # Disable 'Catching too general exception Exception (broad-except)''
+      W0703,      # Disable 'Catching too general exception Exception (broad-except)''
+      C0209       # Formatting a regular string which could be an f-string (consider-using-f-string)
 
 [FORMAT]
 
