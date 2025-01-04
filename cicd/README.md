@@ -26,7 +26,7 @@ As this project is hosted in GitHub, the most common scenario is that you will f
 
 ## Versioning
 
-The pipeline uses the [Greengrass Development Kit (GDK)](https://docs.aws.amazon.com/greengrass/v2/developerguide/greengrass-development-kit-cli.html) to automatically increment the component version number.
+The pipeline uses the the **major.minor** part of the component version defined in [gdk-config.json](../gdk-config.json), and appends the [AWS CodeBuild build number](https://docs.aws.amazon.com/codebuild/latest/userguide/build-env-ref-env-vars.html) as the **patch** version. Accordingly you can't use the `NEXT_PATCH` feature of the [Greengrass Development Kit (GDK)](https://docs.aws.amazon.com/greengrass/v2/developerguide/greengrass-development-kit-cli.html) with the CI/CD pipeline.
 
 ## Notifications
 
