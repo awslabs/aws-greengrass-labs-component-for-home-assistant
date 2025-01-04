@@ -1,0 +1,48 @@
+RecipeFormatVersion: '2020-01-25'
+ComponentName: COMPONENT_NAME
+ComponentVersion: COMPONENT_VERSION
+ComponentDescription: Home Assistant
+ComponentPublisher: Amazon
+ComponentConfiguration:
+  DefaultConfiguration:
+    secretArn: $SECRET_ARN
+    accessControl:
+      aws.greengrass.SecretManager:
+        aws.greengrass.labs.HomeAssistant:secrets:1:
+          policyDescription: Allows access to the Home Assistant configuration secret
+          operations:
+          - "aws.greengrass#GetSecretValue"
+          resources:
+          - $SECRET_ARN
+ComponentDependencies:
+  aws.greengrass.DockerApplicationManager:
+    VersionRequirement: '>=2.0.0'
+  aws.greengrass.SecretManager:
+    VersionRequirement: '>=2.0.0'
+    DependencyType: HARD
+Manifests:
+- Platform:
+    os: linux
+  Lifecycle:
+    Install:
+      RequiresPrivilege: true
+      Script: |-
+        cp -R {artifacts:decompressedPath}/home-assistant/* .
+        pip3 install awsiotsdk
+        python3 -u install.py {configuration:/secretArn}
+    Startup:
+      RequiresPrivilege: true
+      Script: docker-compose up -d
+    Shutdown:
+      RequiresPrivilege: true
+      Script: docker-compose down
+    Recover:
+      RequiresPrivilege: true
+      Script: docker-compose down
+  Artifacts:
+  - Uri: docker:homeassistant/home-assistant:latest
+  - Uri: s3://BUCKET_NAME/COMPONENT_VERSION/home-assistant.zip
+    Unarchive: ZIP
+    Permission:
+      Read: ALL
+Lifecycle: {}

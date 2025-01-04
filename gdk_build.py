@@ -14,7 +14,6 @@ Example execution:
 gdk component build
 """
 
-import json
 import shutil
 import yaml
 from libs.secret import Secret
@@ -22,8 +21,8 @@ from libs.gdk_config import GdkConfig
 
 DIRECTORY_ARTIFACTS = 'artifacts/'
 DIRECTORY_BUILD = 'greengrass-build/artifacts/'
-FILE_RECIPE_TEMPLATE = 'recipe.json'
-FILE_RECIPE = 'greengrass-build/recipes/recipe.json'
+FILE_RECIPE_TEMPLATE = 'recipe.yaml'
+FILE_RECIPE = 'greengrass-build/recipes/recipe.yaml'
 FILE_ZIP_BASE = 'home-assistant'
 FILE_ZIP_EXT = 'zip'
 FILE_DOCKER_COMPOSE = DIRECTORY_ARTIFACTS + 'docker-compose.yml'
@@ -39,11 +38,12 @@ def create_recipe():
     with open(FILE_RECIPE_TEMPLATE, encoding="utf-8") as recipe_template_file:
         recipe_str = recipe_template_file.read()
 
+    recipe_str = recipe_str.replace('COMPONENT_NAME', gdk_config.name())
+    if gdk_config.version() != 'NEXT_PATCH':
+        recipe_str = recipe_str.replace('COMPONENT_VERSION', gdk_config.version())
+
     recipe_str = recipe_str.replace('$SECRET_ARN', secret_value['ARN'])
     recipe_str = recipe_str.replace('$DOCKER_IMAGE', docker_compose_yaml['services']['homeassistant']['image'])
-
-    recipe_json = json.loads(recipe_str)
-    recipe_str = json.dumps(recipe_json, indent=2)
 
     with open(FILE_RECIPE, 'w', encoding="utf-8") as recipe_file:
         recipe_file.write(recipe_str)
