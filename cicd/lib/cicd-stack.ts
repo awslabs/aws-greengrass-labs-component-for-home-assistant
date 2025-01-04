@@ -3,7 +3,6 @@
 
 import * as cdk from 'aws-cdk-lib';
 import * as codebuild from 'aws-cdk-lib/aws-codebuild';
-import * as codecommit from 'aws-cdk-lib/aws-codecommit';
 import * as codepipeline from 'aws-cdk-lib/aws-codepipeline';
 import * as codepipeline_actions from 'aws-cdk-lib/aws-codepipeline-actions';
 import * as s3 from 'aws-cdk-lib/aws-s3';
@@ -20,6 +19,8 @@ enum Names {
 }
 
 type CicdStackContext = {
+    connectionId: string,
+    ownerName: string,
     repositoryName: string,
     branchName: string,
     greengrassCoreName: string
@@ -50,7 +51,7 @@ export class CicdStack extends cdk.Stack {
             environment: {
                 buildImage: codebuild.LinuxBuildImage.STANDARD_7_0
             },
-            timeout: cdk.Duration.minutes(5),
+            timeout: cdk.Duration.minutes(15),
         });
 
         const pipelineBucket = new s3.Bucket(this, `${Names.PREFIX_CAMEL}Bucket`, {
@@ -135,12 +136,12 @@ export class CicdStack extends cdk.Stack {
         const build = new codepipeline.Artifact('Build');
         const deploy = new codepipeline.Artifact('Deploy');
 
-        const codeCommitRepository = codecommit.Repository.fromRepositoryName(this, `${Names.PREFIX_CAMEL}CCRepo`, context.repositoryName);
-
-        const sourceAction = new codepipeline_actions.CodeCommitSourceAction({
+        const sourceAction = new codepipeline_actions.CodeStarConnectionsSourceAction({
             actionName: `${Names.PREFIX_DASH}-source`,
             output: source,
-            repository: codeCommitRepository,
+            connectionArn: `arn:aws:codestar-connections:${this.region}:${this.account}:connection/${context.connectionId}`,
+            owner: context.ownerName,
+            repo: context.repositoryName,
             branch: context.branchName
         });
 
@@ -164,6 +165,7 @@ export class CicdStack extends cdk.Stack {
 
         const pipeline = new codepipeline.Pipeline(this, `${Names.PREFIX_CAMEL}Pipeline`, {
             pipelineName: `${Names.PREFIX_DASH}-pipeline`,
+            pipelineType: codepipeline.PipelineType.V2,
             artifactBucket: pipelineBucket,
             stages: [
                 {
@@ -203,11 +205,15 @@ export class CicdStack extends cdk.Stack {
     }
 
     private getContext(): CicdStackContext {
-        const repositoryName        = this.getContextVariable('RepositoryName',         'Name of the Code Commit repository containing the source code');
-        const branchName            = this.getContextVariable('BranchName',             'Name of the branch to use in the Code Commit repository');
-        const greengrassCoreName    = this.getContextVariable('GreengrassCoreName',     'Name of the Greengrass core device to which the Home Assistant component should be deployed');
+        const connectionId          = this.getContextVariable('ConnectionId',       'CodeStar connection ID of the repo, hosted in GitHub, BitBucket and GitHub Enterprise Server');
+        const ownerName             = this.getContextVariable('OwnerName',          'Name of the owner of the repo, hosted in GitHub, BitBucket and GitHub Enterprise Server');    
+        const repositoryName        = this.getContextVariable('RepositoryName',     'Name of the repository containing the source code (Default: aws-greengrass-labs-component-for-home-assistant)');
+        const branchName            = this.getContextVariable('BranchName',         'Name of the branch to use in the repository (Default: main)');
+        const greengrassCoreName    = this.getContextVariable('GreengrassCoreName', 'Name of the Greengrass core device to which the Home Assistant component should be deployed');
 
         return {
+            connectionId,
+            ownerName,
             repositoryName,
             branchName,
             greengrassCoreName
