@@ -44,6 +44,7 @@ artifacts:
   discard-paths: yes
   files:
     - greengrass-build/**/*
+    - gdk-config.json
     - junit.xml
 
 reports:
