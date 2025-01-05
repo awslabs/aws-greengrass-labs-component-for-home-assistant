@@ -52,7 +52,7 @@ Manifests:
       RequiresPrivilege: true
       Script: docker-compose down
   Artifacts:
-  - Uri: docker:homeassistant/home-assistant:latest
+  - Uri: docker:$DOCKER_IMAGE
   - Uri: s3://BUCKET_NAME/COMPONENT_VERSION/home-assistant.zip
     Unarchive: ZIP
     Permission:
