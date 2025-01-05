@@ -19,10 +19,10 @@ class Secret():
     def get(self):
         """ Gets a secret from Secrets Manager """
         try:
-            print('Getting the Home Assistant secret {}'.format(self.SECRET_NAME))
+            print(f'Getting the Home Assistant secret {self.SECRET_NAME}')
             response = self.secretsmanager_client.get_secret_value(SecretId=self.SECRET_NAME)
         except Exception as e:
-            print('Failed to get secret\nException: {}'.format(e))
+            print(f'Failed to get secret\nException: {e}')
             raise e
 
         return response
@@ -31,22 +31,22 @@ class Secret():
         """ Creates or updates the Home Assistant secret in Secrets Manager """
         if self.exists():
             try:
-                print('Updating the Home Assistant secret {}'.format(self.SECRET_NAME))
+                print(f'Updating the Home Assistant secret {self.SECRET_NAME}')
                 response = self.secretsmanager_client.update_secret(SecretId=self.SECRET_NAME,
                                                                     SecretString=secret_string,
                                                                     Description=self.SECRET_DESCRIPTION)
             except Exception as e:
-                print('Failed to update the Home Assistant secret\nException: {}'.format(e))
+                print(f'Failed to update the Home Assistant secret\nException: {e}')
                 raise e
             print('Successfully updated the Home Assistant secret')
         else:
             try:
-                print('Creating Home Assistant secret {}'.format(self.SECRET_NAME))
+                print(f'Creating Home Assistant secret {self.SECRET_NAME}')
                 response = self.secretsmanager_client.create_secret(Name=self.SECRET_NAME,
                                                                     SecretString=secret_string,
                                                                     Description=self.SECRET_DESCRIPTION)
             except Exception as e:
-                print('Failed to create the Home Assistant secret\nException: {}'.format(e))
+                print(f'Failed to create the Home Assistant secret\nException: {e}')
                 raise e
             print('Successfully created the Home Assistant secret')
 

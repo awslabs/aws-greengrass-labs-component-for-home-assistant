@@ -30,7 +30,7 @@ FILE_DOCKER_COMPOSE = DIRECTORY_ARTIFACTS + 'docker-compose.yml'
 
 def create_recipe():
     """ Creates the component recipe, filling in the Docker images and Secret ARN """
-    print('Creating recipe {}'.format(FILE_RECIPE))
+    print(f'Creating recipe {FILE_RECIPE}')
 
     with open(FILE_DOCKER_COMPOSE, encoding="utf-8") as docker_compose_file:
         docker_compose_yaml = yaml.safe_load(docker_compose_file)
@@ -53,7 +53,7 @@ def create_recipe():
 def create_artifacts():
     """ Creates the artifacts archive as a ZIP file """
     file_name = DIRECTORY_BUILD + gdk_config.name() + '/' + gdk_config.version() + '/' + FILE_ZIP_BASE
-    print('Creating artifacts archive {}'.format(file_name))
+    print(f'Creating artifacts archive {file_name}')
     shutil.make_archive(file_name, FILE_ZIP_EXT, DIRECTORY_ARTIFACTS)
     print('Created artifacts archive')
 

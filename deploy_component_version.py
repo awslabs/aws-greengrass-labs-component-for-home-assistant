@@ -23,21 +23,21 @@ COMPONENT_SECRET_MANAGER = 'aws.greengrass.SecretManager'
 
 def get_newest_component_version(component_name):
     """ Gets the newest version of a component """
-    component_arn = 'arn:aws:greengrass:{}:aws:components:{}'.format(gdk_config.region(), component_name)
+    component_arn = f'arn:aws:greengrass:{gdk_config.region()}:aws:components:{component_name}'
 
     try:
         response = greengrassv2_client.list_component_versions(arn=component_arn)
     except Exception as e:
-        print('Failed to get component versions for {}\nException: {}'.format(component_name, e))
+        print(f'Failed to get component versions for {component_name}\nException: {e}')
         sys.exit(1)
 
     return response['componentVersions'][0]['componentVersion']
 
 def get_deployment():
     """ Gets the details of the existing deployment """
-    thing_arn = 'arn:aws:iot:{}:{}:thing/{}'.format(gdk_config.region(), ACCOUNT, args.coreDeviceThingName)
+    thing_arn = f'arn:aws:iot:{gdk_config.region()}:{ACCOUNT}:thing/{args.coreDeviceThingName}'
 
-    print('Searching for existing single Thing deployment for {}'.format(args.coreDeviceThingName))
+    print(f'Searching for existing single Thing deployment for {args.coreDeviceThingName}')
 
     try:
         # Get the latest deployment for the specified core device name
@@ -47,7 +47,7 @@ def get_deployment():
             maxResults=1
         )
     except Exception as e:
-        print('Failed to list deployments\nException: {}'.format(e))
+        print(f'Failed to list deployments\nException: {e}')
         sys.exit(1)
 
     # We expect to update an existing deployment, not create a new one
@@ -62,11 +62,11 @@ def get_deployment():
         response = greengrassv2_client.get_deployment(deploymentId=deployment_id)
 
         if 'deploymentName' in response:
-            print('Found existing named deployment "{}"'.format(response['deploymentName']))
+            print(f'Found existing named deployment "{response['deploymentName']}"')
         else:
-            print('Found existing unnamed deployment {}'.format(deployment_id))
+            print(f'Found existing unnamed deployment {deployment_id}')
     except Exception as e:
-        print('Failed to get deployment\nException: {}'.format(e))
+        print(f'Failed to get deployment\nException: {e}')
         sys.exit(1)
 
     return response
@@ -77,13 +77,13 @@ def update_deployment(deployment):
     # If Docker Application manager is not in the deployment, add the latest version
     if COMPONENT_DOCKER_APPLICATION_MANAGER not in deployment['components']:
         version = get_newest_component_version(COMPONENT_DOCKER_APPLICATION_MANAGER)
-        print('Adding {} {} to the deployment'.format(COMPONENT_DOCKER_APPLICATION_MANAGER, version))
+        print(f'Adding {COMPONENT_DOCKER_APPLICATION_MANAGER} {version} to the deployment')
         deployment['components'].update({COMPONENT_DOCKER_APPLICATION_MANAGER: {'componentVersion': version}})
 
     # If Secret manager is not in the deployment, add the latest version
     if COMPONENT_SECRET_MANAGER not in deployment['components']:
         version = get_newest_component_version(COMPONENT_SECRET_MANAGER)
-        print('Adding {} {} to the deployment'.format(COMPONENT_SECRET_MANAGER, version))
+        print(f'Adding {COMPONENT_SECRET_MANAGER} {version} to the deployment')
         cloud_secrets = [{"arn": secret_value['ARN']}]
     else:
         # If it's already in the deployment, use the current version
@@ -93,7 +93,7 @@ def update_deployment(deployment):
 
         # Add our secret to the list of configured secrets
         if secret_value['ARN'] not in merge_str:
-            print('Adding secret {} to Secret Manager configuration'.format(secret_value['ARN']))
+            print(f'Adding secret {secret_value['ARN']} to Secret Manager configuration')
             cloud_secrets.append({"arn": secret_value['ARN']})
 
     # Update Secret Manager with the appropriate version and configuration
@@ -104,9 +104,9 @@ def update_deployment(deployment):
 
     # Add or update our component to the specified version
     if gdk_config.name() not in deployment['components']:
-        print('Adding {} {} to the deployment'.format(gdk_config.name(), args.version))
+        print(f'Adding {gdk_config.name()} {args.version} to the deployment')
     else:
-        print('Updating deployment with {} {}'.format(gdk_config.name(), args.version))
+        print(f'Updating deployment with {gdk_config.name()} {args.version}')
     deployment['components'].update({gdk_config.name(): {'componentVersion': args.version}})
 
 def create_deployment(deployment):
@@ -116,8 +116,8 @@ def create_deployment(deployment):
     if 'deploymentName' in deployment:
         deployment_name = deployment['deploymentName']
     else:
-        deployment_name = 'Deployment for {}'.format(args.coreDeviceThingName)
-        print('Renaming deployment to "{}"'.format(deployment_name))
+        deployment_name = f'Deployment for {args.coreDeviceThingName}'
+        print(f'Renaming deployment to "{deployment_name}"')
 
     try:
         # We deploy to a single Thing and hence without an IoT job configuration
@@ -128,7 +128,7 @@ def create_deployment(deployment):
             components=deployment['components']
         )
     except Exception as e:
-        print('Failed to create deployment\nException: {}'.format(e))
+        print(f'Failed to create deployment\nException: {e}')
         sys.exit(1)
 
     return response['deploymentId']
@@ -138,27 +138,27 @@ def wait_for_deployment_to_finish(deploy_id):
     deployment_status = 'ACTIVE'
     snapshot = time.time()
 
-    while deployment_status == 'ACTIVE' and (time.time() - snapshot) < 300:
+    while deployment_status == 'ACTIVE' and (time.time() - snapshot) < 900:
         try:
             response = greengrassv2_client.get_deployment(deploymentId=deploy_id)
             deployment_status = response['deploymentStatus']
         except Exception as e:
-            print('Failed to get deployment\nException: {}'.format(e))
+            print(f'Failed to get deployment\nException: {e}')
             sys.exit(1)
 
     if deployment_status == 'COMPLETED':
-        print('Deployment completed successfully in {:.1f} seconds'.format(time.time() - snapshot))
+        print(f'Deployment completed successfully in {time.time() - snapshot:.1f} seconds')
     elif deployment_status == 'ACTIVE':
         print('Deployment timed out')
         sys.exit(1)
     else:
-        print('Deployment error: {}'.format(deployment_status))
+        print(f'Deployment error: {deployment_status}')
         sys.exit(1)
 
 
 gdk_config = GdkConfig()
 
-parser = argparse.ArgumentParser(description='Deploy a version of the {} component'.format(gdk_config.name()))
+parser = argparse.ArgumentParser(description=f'Deploy a version of the {gdk_config.name()} component')
 parser.add_argument('version', help='Version of the component to be deployed (Example: 1.0.0)')
 parser.add_argument('coreDeviceThingName', help='Greengrass core device to deploy to')
 args = parser.parse_args()
@@ -168,7 +168,7 @@ greengrassv2_client = boto3.client('greengrassv2', region_name=gdk_config.region
 secret = Secret(gdk_config.region())
 secret_value = secret.get()
 
-print('Attempting deployment of version {} to core device {}'.format(args.version, args.coreDeviceThingName))
+print(f'Attempting deployment of version {args.version} to core device {args.coreDeviceThingName}')
 
 # Get the latest (single Thing) deployment for the specified core device
 current_deployment = get_deployment()
@@ -178,5 +178,5 @@ update_deployment(current_deployment)
 
 # Create a new deployment
 new_deployment_id = create_deployment(current_deployment)
-print('Deployment {} successfully created. Waiting for completion ...'.format(new_deployment_id))
+print(f'Deployment {new_deployment_id} successfully created. Waiting for completion ...')
 wait_for_deployment_to_finish(new_deployment_id)

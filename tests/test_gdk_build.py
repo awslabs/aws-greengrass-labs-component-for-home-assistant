@@ -49,11 +49,11 @@ def recipe(name, version, secret_arn, image):
 def docker_compose(image):
     """ Create a Docker compose fragment """
     docker_compose_str =\
-    """
+    f"""
     services:
         homeassistant:
             image: {image}
-    """.format(image=image)
+    """
 
     return docker_compose_str
 

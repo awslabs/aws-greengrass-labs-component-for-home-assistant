@@ -27,12 +27,12 @@ secret_string = '{'
 
 filenames = glob.glob(DIRECTORY_CONFIG + '/**/*.*', recursive=True)
 
-print('Files to add to secret: {}'.format(filenames))
+print(f'Files to add to secret: {filenames}')
 
 for filename in filenames:
     with open(filename, encoding="utf-8") as file:
         file_str = file.read()
-        secret_string += '"{}":"{}",'.format(filename.replace(DIRECTORY_CONFIG, ''), escape(file_str))
+        secret_string += f'"{filename.replace(DIRECTORY_CONFIG, '')}":"{escape(file_str)}",'
 
 secret_string = secret_string[:-1] + '}'
 
@@ -42,4 +42,4 @@ secret = Secret(gdk_config.region())
 secret_response = secret.put(secret_string)
 
 print('\nBEFORE DEPLOYING COMPONENT:')
-print('Add secretsmanager:GetSecretValue for {} to the Greengrass device role'.format(secret_response['ARN']))
+print(f'Add secretsmanager:GetSecretValue for {secret_response['ARN']} to the Greengrass device role')
