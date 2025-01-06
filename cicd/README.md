@@ -30,7 +30,7 @@ The pipeline uses the the **major.minor** part of the component version defined 
 
 ## Notifications
 
-The pipeline publishes success or failure notifications to an SNS topic named **gg-ha-cicd-notification**.
+The pipeline publishes success or failure notifications to an SNS topic named **AWSLabsHomeAssistantNotification**.
 
 ## Test Reports
 
