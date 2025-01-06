@@ -42,4 +42,4 @@ secret = Secret(gdk_config.region())
 secret_response = secret.put(secret_string)
 
 print('\nBEFORE DEPLOYING COMPONENT:')
-print(f'Add secretsmanager:GetSecretValue for {secret_response['ARN']} to the Greengrass device role')
+print(f'Add secretsmanager:GetSecretValue for {secret_response["ARN"]} to the Greengrass device role')

@@ -93,7 +93,7 @@ def update_deployment(deployment):
 
         # Add our secret to the list of configured secrets
         if secret_value['ARN'] not in merge_str:
-            print(f'Adding secret {secret_value['ARN']} to Secret Manager configuration')
+            print(f'Adding secret {secret_value["ARN"]} to Secret Manager configuration')
             cloud_secrets.append({"arn": secret_value['ARN']})
 
     # Update Secret Manager with the appropriate version and configuration
