@@ -62,7 +62,7 @@ def get_deployment():
         response = greengrassv2_client.get_deployment(deploymentId=deployment_id)
 
         if 'deploymentName' in response:
-            print(f'Found existing named deployment "{response['deploymentName']}"')
+            print(f'Found existing named deployment "{response["deploymentName"]}"')
         else:
             print(f'Found existing unnamed deployment {deployment_id}')
     except Exception as e:

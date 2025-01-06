@@ -32,7 +32,7 @@ print(f'Files to add to secret: {filenames}')
 for filename in filenames:
     with open(filename, encoding="utf-8") as file:
         file_str = file.read()
-        secret_string += f'"{filename.replace(DIRECTORY_CONFIG, '')}":"{escape(file_str)}",'
+        secret_string += f'"{filename.replace(DIRECTORY_CONFIG, "")}":"{escape(file_str)}",'
 
 secret_string = secret_string[:-1] + '}'
 
