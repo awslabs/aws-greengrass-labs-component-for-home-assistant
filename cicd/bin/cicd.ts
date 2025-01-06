@@ -5,8 +5,13 @@
 
 import * as cdk from 'aws-cdk-lib';
 import { CicdStack } from '../lib/cicd-stack';
+import { AwsSolutionsChecks } from 'cdk-nag'
+import { Aspects } from 'aws-cdk-lib';
 
 const app = new cdk.App();
+
+Aspects.of(app).add(new AwsSolutionsChecks({ verbose: true }))
+
 new CicdStack(app, 'AWSLabsHomeAssistantPipeline', {
   /* If you don't specify 'env', this stack will be environment-agnostic.
    * Account/Region-dependent features and context lookups will not work,

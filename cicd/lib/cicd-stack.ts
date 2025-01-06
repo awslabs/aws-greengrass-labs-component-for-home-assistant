@@ -10,7 +10,9 @@ import * as sns from 'aws-cdk-lib/aws-sns';
 import * as events_targets from 'aws-cdk-lib/aws-events-targets';
 import * as events from 'aws-cdk-lib/aws-events';
 import * as iam from 'aws-cdk-lib/aws-iam';
+import * as kms from 'aws-cdk-lib/aws-kms';
 import * as gdkConfig from '../../gdk-config.json';
+import { NagSuppressions } from 'cdk-nag'
 
 enum Names {
     SECRET = 'greengrass-home-assistant'
@@ -41,6 +43,7 @@ export class CicdStack extends cdk.Stack {
                 buildImage: codebuild.LinuxBuildImage.STANDARD_7_0
             },
             timeout: cdk.Duration.minutes(5),
+            encryptionKey: kms.Alias.fromAliasName(this, `${this.stackName}BuildS3Key`, 'alias/aws/s3')
         });
 
         const deployProject = new codebuild.PipelineProject(this, `${this.stackName}Deploy`, {
@@ -50,18 +53,49 @@ export class CicdStack extends cdk.Stack {
                 buildImage: codebuild.LinuxBuildImage.STANDARD_7_0
             },
             timeout: cdk.Duration.minutes(15),
+            encryptionKey: kms.Alias.fromAliasName(this, `${this.stackName}DeployS3Key`, 'alias/aws/s3')
         });
 
         const pipelineBucket = new s3.Bucket(this, `${this.stackName}Bucket`, {
             bucketName: `${this.stackName.toLowerCase()}-${this.account}-${this.region}`,
             blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
             versioned: false,
+            serverAccessLogsPrefix: 'access-logs',
+            encryption: s3.BucketEncryption.S3_MANAGED,
+            enforceSSL: true
         });
 
         const topic = new sns.Topic(this, `${this.stackName}Notification`, {
             topicName: `${this.stackName}Notification`,
             displayName: `${this.stackName} CI/CD Notification`
         });
+
+        // Create a policy that enforces SSL but allows AWS services
+        // (such as CodePipeline) to publish to the topic via EventBridge
+        const topicPolicy = new sns.TopicPolicy(this, `${this.stackName}NotificationPolicy`, {
+            topics: [topic]
+        });
+        topicPolicy.document.addStatements(
+            // Allow AWS services to publish
+            new iam.PolicyStatement({
+                effect: iam.Effect.ALLOW,
+                principals: [new iam.ServicePrincipal('events.amazonaws.com')],
+                actions: ['sns:Publish'],
+                resources: [topic.topicArn]
+            }),
+            // Deny non-SSL access for all other publishers
+            new iam.PolicyStatement({
+                effect: iam.Effect.DENY,
+                principals: [new iam.AnyPrincipal()],
+                actions: ['sns:Publish'],
+                resources: [topic.topicArn],
+                conditions: {
+                    'Bool': {
+                        'aws:SecureTransport': false
+                    }
+                }
+            })
+        );
 
         // We create the unit tests report group explicitly, rather than let CodeBuild do it, so that we can define the raw results export
         new codebuild.CfnReportGroup(this, `${this.stackName}UnitTestReportGroup`, {
@@ -78,48 +112,58 @@ export class CicdStack extends cdk.Stack {
         });
 
         // The build project needs some extra rights
-        buildProject.addToRolePolicy(new iam.PolicyStatement({
-            effect: iam.Effect.ALLOW,
-            actions: ['greengrass:CreateComponentVersion','greengrass:ListComponentVersions'],
-            resources: [`arn:aws:greengrass:${this.region}:${this.account}:components:${componentName}`]
-        }));
-        buildProject.addToRolePolicy(new iam.PolicyStatement({
-            effect: iam.Effect.ALLOW,
-            actions: ['s3:CreateBucket','s3:GetBucketLocation'],
-            resources: [`arn:aws:s3:::${bucketName}-${this.region}-${this.account}`]
-        }));
-        buildProject.addToRolePolicy(new iam.PolicyStatement({
-            effect: iam.Effect.ALLOW,
-            actions: ['s3:PutObject','s3:GetObject'],
-            resources: [`arn:aws:s3:::${bucketName}-${this.region}-${this.account}/*`]
-        }));
-
+        const buildProjectPolicy = new iam.Policy(this, `${this.stackName}BuildProjectPolicy`, {
+            statements: [
+                new iam.PolicyStatement({
+                    effect: iam.Effect.ALLOW,
+                    actions: ['greengrass:CreateComponentVersion','greengrass:ListComponentVersions'],
+                    resources: [`arn:aws:greengrass:${this.region}:${this.account}:components:${componentName}`]
+                }),
+                new iam.PolicyStatement({
+                    effect: iam.Effect.ALLOW,
+                    actions: ['s3:CreateBucket','s3:GetBucketLocation'],
+                    resources: [`arn:aws:s3:::${bucketName}-${this.region}-${this.account}`]
+                }),
+                new iam.PolicyStatement({
+                    effect: iam.Effect.ALLOW,
+                    actions: ['s3:PutObject','s3:GetObject'],
+                    resources: [`arn:aws:s3:::${bucketName}-${this.region}-${this.account}/*`]
+                })
+            ]
+        })
+        buildProject.role?.attachInlinePolicy(buildProjectPolicy);
+    
         // The deploy project needs some extra rights
-        deployProject.addToRolePolicy(new iam.PolicyStatement({
-            effect: iam.Effect.ALLOW,
-            actions: ['greengrass:GetCoreDevice'],
-            resources: [`arn:aws:greengrass:${this.region}:${this.account}:coreDevices:${context.greengrassCoreName}`]
-        }));
-        deployProject.addToRolePolicy(new iam.PolicyStatement({
-            effect: iam.Effect.ALLOW,
-            actions: ['greengrass:ListComponentVersions'],
-            resources: [`arn:aws:greengrass:${this.region}:${this.account}:components:*`]
-        }));
-        deployProject.addToRolePolicy(new iam.PolicyStatement({
-            effect: iam.Effect.ALLOW,
-            actions: ['greengrass:CreateDeployment'],
-            resources: ['*']
-        }));
-        deployProject.addToRolePolicy(new iam.PolicyStatement({
-            effect: iam.Effect.ALLOW,
-            actions: ['greengrass:GetDeployment', 'greengrass:ListDeployments'],
-            resources: [`arn:aws:greengrass:${this.region}:${this.account}:deployments:*`]
-        }));
-        deployProject.addToRolePolicy(new iam.PolicyStatement({
-            effect: iam.Effect.ALLOW,
-            actions: ['iot:*'],
-            resources: ['*']
-        }));
+        const deployProjectPolicy = new iam.Policy(this, `${this.stackName}DeployProjectPolicy`, {
+            statements: [
+                new iam.PolicyStatement({
+                    effect: iam.Effect.ALLOW,
+                    actions: ['greengrass:GetCoreDevice'],
+                    resources: [`arn:aws:greengrass:${this.region}:${this.account}:coreDevices:${context.greengrassCoreName}`]
+                }),
+                new iam.PolicyStatement({
+                    effect: iam.Effect.ALLOW,
+                    actions: ['greengrass:ListComponentVersions'],
+                    resources: [`arn:aws:greengrass:${this.region}:${this.account}:components:*`]
+                }),
+                new iam.PolicyStatement({
+                    effect: iam.Effect.ALLOW,
+                    actions: ['greengrass:CreateDeployment'],
+                    resources: ['*']
+                }),
+                new iam.PolicyStatement({
+                    effect: iam.Effect.ALLOW,
+                    actions: ['greengrass:GetDeployment', 'greengrass:ListDeployments'],
+                    resources: [`arn:aws:greengrass:${this.region}:${this.account}:deployments:*`]
+                }),
+                new iam.PolicyStatement({
+                    effect: iam.Effect.ALLOW,
+                    actions: ['iot:*'],
+                    resources: ['*']
+                })
+            ]
+        })
+        deployProject.role?.attachInlinePolicy(deployProjectPolicy);
 
         // All projects need to be able to get the secret value
         const secretPolicy = new iam.PolicyStatement({
@@ -190,6 +234,20 @@ export class CicdStack extends cdk.Stack {
         notificationRule.addTarget(new events_targets.SnsTopic(topic, {
             message: events.RuleTargetInput.fromText(`Account ${account} ${state} for execution ID ${executionId}`)
         }));
+
+        NagSuppressions.addResourceSuppressions([pipeline, buildProject, deployProject], [
+            {
+              id: 'AwsSolutions-IAM5',
+              reason: 'The default policies created in the code build and pipeline roles include wildcards.'
+            }
+        ], true )
+
+        NagSuppressions.addResourceSuppressions([buildProjectPolicy, deployProjectPolicy], [
+            {
+              id: 'AwsSolutions-IAM5',
+              reason: 'The wildcards used in these policies are least privilege for the resources or access needed'
+            }
+        ], true )
     }
 
     private getContextVariable(name:string, desc:string): string {
