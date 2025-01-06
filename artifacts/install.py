@@ -16,7 +16,7 @@ def create_files_from_secret():
     """ Extracts files from the configuration secret and creates them on disk """
     print('Creating files from secret')
     for filename, contents in secret.items():
-        print('Creating {}'.format(filename))
+        print(f'Creating {filename}')
         if '/' in filename:
             os.makedirs(os.path.dirname(filename), exist_ok=True)
         with open(filename, 'w', encoding="utf-8") as file:

@@ -99,8 +99,14 @@ def test_secret_exists_success(secret):
     secret.secretsmanager_client.list_secrets = Mock(return_value = secret_list)
     assert secret.exists()
 
-def test_secret_exists_fail(secret):
-    """ Returns false if a secret doesn't exist """
+def test_secret_exists_fail_no_secrets(secret):
+    """ Returns false if there are no secrets """
     secret_list = {'SecretList': []}
+    secret.secretsmanager_client.list_secrets = Mock(return_value = secret_list)
+    assert not secret.exists()
+
+def test_secret_exists_fail_missing_secret(secret):
+    """ Returns false if there are secrets, but not ours """
+    secret_list = {'SecretList': [{'Name': 'foobar'}]}
     secret.secretsmanager_client.list_secrets = Mock(return_value = secret_list)
     assert not secret.exists()
