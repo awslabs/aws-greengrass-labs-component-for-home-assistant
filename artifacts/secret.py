@@ -8,23 +8,16 @@ Gets a secret from the Secret manager component
 import json
 import sys
 import traceback
-import awsiot.greengrasscoreipc
-from awsiot.greengrasscoreipc.model import GetSecretValueRequest
+from awsiot.greengrasscoreipc.clientv2 import GreengrassCoreIPCClientV2
 
 def get_secret(secret_id):
     """ Gets a locally stored secret from the Secret Manager component """
     try:
         print('Getting IPC client')
-        ipc_client = awsiot.greengrasscoreipc.connect()
+        ipc_client = GreengrassCoreIPCClientV2()
 
-        print('Getting secret: ' + secret_id)
-        request = GetSecretValueRequest()
-        request.secret_id = secret_id
-        operation = ipc_client.new_get_secret_value()
-        operation.activate(request)
-        future_response = operation.get_response()
-
-        response = future_response.result(timeout=10)
+        print('Refreshing and getting secret: ' + secret_id)
+        response = ipc_client.get_secret_value(secret_id=secret_id, refresh=True)
         secret_json = json.loads(response.secret_value.secret_string)
         print('Successfully got secret: ' + secret_id)
     except Exception:
