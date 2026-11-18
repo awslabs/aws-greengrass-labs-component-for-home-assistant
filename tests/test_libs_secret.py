@@ -47,9 +47,9 @@ def test_secret_put_create_success(secret):
     secret.secretsmanager_client.create_secret = Mock(return_value = expected_response)
     response = secret.put(SECRET_STRING)
     secret.secretsmanager_client.create_secret.assert_called_once_with(
-        Name=secret.SECRET_NAME,
+        Name=secret.NAME,
         SecretString=SECRET_STRING,
-        Description=secret.SECRET_DESCRIPTION
+        Description=secret.DESCRIPTION
     )
     assert response == expected_response
 
@@ -61,41 +61,41 @@ def test_secret_put_create_fail(secret):
     with pytest.raises(Exception):
         secret.put(SECRET_STRING)
     secret.secretsmanager_client.create_secret.assert_called_once_with(
-        Name=secret.SECRET_NAME,
+        Name=secret.NAME,
         SecretString=SECRET_STRING,
-        Description=secret.SECRET_DESCRIPTION
+        Description=secret.DESCRIPTION
     )
 
 def test_secret_put_update_success(secret):
     """ Put should succeed, with no exception generated """
-    secret_list = {'SecretList': [{'Name': secret.SECRET_NAME}]}
+    secret_list = {'SecretList': [{'Name': secret.NAME}]}
     secret.secretsmanager_client.list_secrets = Mock(return_value = secret_list)
     expected_response = {'ARN': 'mocked_arn'}
     secret.secretsmanager_client.update_secret = Mock(return_value = expected_response)
     response = secret.put(SECRET_STRING)
     secret.secretsmanager_client.update_secret.assert_called_once_with(
-        SecretId=secret.SECRET_NAME,
+        SecretId=secret.NAME,
         SecretString=SECRET_STRING,
-        Description=secret.SECRET_DESCRIPTION
+        Description=secret.DESCRIPTION
     )
     assert response == expected_response
 
 def test_secret_put_update_fail(secret):
     """ Put should fail, if the update gets an exception """
-    secret_list = {'SecretList': [{'Name': secret.SECRET_NAME}]}
+    secret_list = {'SecretList': [{'Name': secret.NAME}]}
     secret.secretsmanager_client.list_secrets = Mock(return_value = secret_list)
     secret.secretsmanager_client.update_secret = Mock(side_effect = Exception('mocked error'))
     with pytest.raises(Exception):
         secret.put(SECRET_STRING)
     secret.secretsmanager_client.update_secret.assert_called_once_with(
-        SecretId=secret.SECRET_NAME,
+        SecretId=secret.NAME,
         SecretString=SECRET_STRING,
-        Description=secret.SECRET_DESCRIPTION
+        Description=secret.DESCRIPTION
     )
 
 def test_secret_exists_success(secret):
     """ Returns true if a secret exists """
-    secret_list = {'SecretList': [{'Name': secret.SECRET_NAME}]}
+    secret_list = {'SecretList': [{'Name': secret.NAME}]}
     secret.secretsmanager_client.list_secrets = Mock(return_value = secret_list)
     assert secret.exists()
 

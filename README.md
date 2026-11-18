@@ -48,7 +48,9 @@ Using the Home Assistant [MQTT Integration](https://www.home-assistant.io/integr
     * [Secret Configuration Changes Not Deployed](#secret-configuration-changes-not-deployed)
 * [Development](#development)
   * [Static Analysis](#static-analysis)
+  * [Static Type Checking](#static-type-checking)
   * [Unit Tests](#unit-tests)
+  * [Security Scanning](#security-scanning)
 
 # Architecture
 
@@ -387,6 +389,14 @@ Static analysis is performed using [Pylint](https://pylint.org/). Example execut
 pylint artifacts libs tests *.py
 ```
 
+## Static Type Checking
+
+Static type checking is performed using [mypy](https://mypy-lang.org/). Example execution:
+
+```
+mypy --ignore-missing-imports artifacts
+```
+
 ## Unit Tests
 
 Unit tests are performed using [pytest](https://pytest.org/).
@@ -407,4 +417,12 @@ Producing a coverage report for just the on-device artifacts (100% coverage):
 
 ```
 pytest --cov=artifacts
+```
+
+## Security Scanning
+
+Security scanning is performed using [Bandit](https://github.com/PyCQA/bandit). Example execution:
+
+```
+bandit -r -v artifacts libs *.py
 ```

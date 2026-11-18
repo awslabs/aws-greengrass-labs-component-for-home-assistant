@@ -23,7 +23,7 @@ def escape(in_str):
     """ Escapes a string to make it suitable for storage in JSON """
     return in_str.replace('"', '\\"').replace('\n', '\\n').replace('\r', '\\r')
 
-secret_string = '{'
+config_json = '{'
 
 filenames = glob.glob(DIRECTORY_CONFIG + '/**/*.*', recursive=True)
 
@@ -32,14 +32,14 @@ print(f'Files to add to secret: {filenames}')
 for filename in filenames:
     with open(filename, encoding="utf-8") as file:
         file_str = file.read()
-        secret_string += f'"{filename.replace(DIRECTORY_CONFIG, "")}":"{escape(file_str)}",'
+        config_json += f'"{filename.replace(DIRECTORY_CONFIG, "")}":"{escape(file_str)}",'
 
-secret_string = secret_string[:-1] + '}'
+config_json = config_json[:-1] + '}'
 
 gdk_config = GdkConfig()
 
 secret = Secret(gdk_config.region())
-secret_response = secret.put(secret_string)
+secret_response = secret.put(config_json)
 
 print('\nBEFORE DEPLOYING COMPONENT:')
 print(f'Add secretsmanager:GetSecretValue for {secret_response["ARN"]} to the Greengrass device role')
