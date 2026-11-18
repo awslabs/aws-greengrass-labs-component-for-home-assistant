@@ -1,0 +1,57 @@
+# Dependabot configuration
+# https://docs.github.com/en/code-security/reference/supply-chain-security/dependabot-options-reference
+
+version: 2
+updates:
+  # CDK application for the CI/CD pipeline
+  - package-ecosystem: npm
+    directory: /cicd
+    schedule:
+      interval: monthly
+    ignore:
+      # cdk-nag 3.x is a breaking rewrite (Aspect -> policy validation plugin)
+      # that needs code changes, so major upgrades are done by hand.
+      - dependency-name: cdk-nag
+        update-types: ["version-update:semver-major"]
+      # Node.js types must match the Node.js version used by CI.
+      - dependency-name: "@types/node"
+        update-types: ["version-update:semver-major"]
+    groups:
+      # Keep the CDK CLI and library in step so the CLI always supports the
+      # cloud assembly schema that aws-cdk-lib produces.
+      cdk:
+        patterns:
+          - aws-cdk
+          - aws-cdk-lib
+          - constructs
+          - cdk-nag
+      # Everything else (jest, swc, typescript, tsx, @types/*)
+      tooling:
+        patterns:
+          - "*"
+      # Combine security fixes for transitive dependencies into one PR
+      npm-security:
+        applies-to: security-updates
+        patterns:
+          - "*"
+
+  # Python requirements for the developer machine, CI and the CodeBuild
+  # build stage of the pipeline
+  - package-ecosystem: pip
+    directory: /
+    schedule:
+      interval: monthly
+    groups:
+      python:
+        patterns:
+          - "*"
+
+  # Actions used by the GitHub workflows (pinned by commit SHA)
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+    groups:
+      actions:
+        patterns:
+          - "*"
