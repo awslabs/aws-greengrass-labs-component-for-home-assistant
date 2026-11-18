@@ -129,7 +129,9 @@ def test_fails_if_deployment_times_out(mocker, boto3_client):
     """ Should exit abruptly if the deployment times out """
     boto3_client.get_deployment.return_value['deploymentStatus'] = 'ACTIVE'
     mocker.patch('time.time', side_effect=[0, 0, 900])
+    sleep = mocker.patch('time.sleep')
     confirm_exit()
+    sleep.assert_called_once_with(1)
     calls=[call(deploymentId=DEPLOYMENT_ID), call(deploymentId=NEW_DEPLOYMENT_ID)]
     boto3_client.get_deployment.assert_has_calls(calls)
     boto3_client.create_deployment.assert_called_once_with(targetArn=TARGET_ARN, deploymentName=DEPLOYMENT_NAME,
