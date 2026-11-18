@@ -146,6 +146,10 @@ def wait_for_deployment_to_finish(deploy_id):
             print(f'Failed to get deployment\nException: {e}')
             sys.exit(1)
 
+        # Pace the polling to stay well within the API rate limits
+        if deployment_status == 'ACTIVE':
+            time.sleep(1)
+
     if deployment_status == 'COMPLETED':
         print(f'Deployment completed successfully in {time.time() - snapshot:.1f} seconds')
     elif deployment_status == 'ACTIVE':
