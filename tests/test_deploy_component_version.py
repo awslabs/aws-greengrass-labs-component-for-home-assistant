@@ -21,12 +21,12 @@ TARGET_ARN = f'arn:aws:iot:us-east-1:000011112222:thing/{CORE_DEVICE_NAME}'
 NEW_DEPLOYMENT_ID = 'the pot'
 SECRET_ARN = 'lateralus'
 COMPONENT_DOCKER_APPLICATION_MANAGER = 'aws.greengrass.DockerApplicationManager'
-COMPONENT_SECRET_MANAGER = 'aws.greengrass.SecretManager'
+COMPONENT_SEC_MANAGER = 'aws.greengrass.SecretManager'
 COMPONENTS = {
                 COMPONENT_DOCKER_APPLICATION_MANAGER: {
                     'componentVersion': COMPONENT_VERSION
                 },
-                COMPONENT_SECRET_MANAGER: {
+                COMPONENT_SEC_MANAGER: {
                     'componentVersion': COMPONENT_VERSION,
                     'configurationUpdate': {'merge': '{\"cloudSecrets\":[{\"arn\": \"' + SECRET_ARN + '\"}]}'}
                 },
@@ -177,13 +177,13 @@ def test_succeeds_add_docker_application_manager(boto3_client):
 def test_succeeds_add_secret_manager(boto3_client):
     """ Successful deployment, adding the Docker Secret manager component """
     boto3_client.get_deployment.return_value['deploymentStatus'] = 'COMPLETED'
-    del boto3_client.get_deployment.return_value['components'][COMPONENT_SECRET_MANAGER]
+    del boto3_client.get_deployment.return_value['components'][COMPONENT_SEC_MANAGER]
     confirm_success(boto3_client)
 
 def test_succeeds_add_secret_manager_no_secret(boto3_client):
     """ Successful deployment, adding a secret to existing Secret manager component """
     boto3_client.get_deployment.return_value['deploymentStatus'] = 'COMPLETED'
-    secret_manager = boto3_client.get_deployment.return_value['components'][COMPONENT_SECRET_MANAGER]
+    secret_manager = boto3_client.get_deployment.return_value['components'][COMPONENT_SEC_MANAGER]
     # Erase the secret
     secret_manager['configurationUpdate']['merge'] = '{\"cloudSecrets\":[]}'
     confirm_success(boto3_client)

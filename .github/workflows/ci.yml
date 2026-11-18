@@ -26,7 +26,13 @@ jobs:
     - name: Analysing the code with pylint
       run: |
         pylint artifacts libs tests *.py
+    - name: Type checking the code with mypy
+      run: |
+        mypy --ignore-missing-imports artifacts
     - name: Testing the code with pytest
       run: |
         pytest --junit-xml=junit.xml --cov=artifacts --cov=.
+    - name: Scanning the code with bandit
+      run: |
+        bandit -r -v artifacts libs *.py
 

@@ -19,7 +19,7 @@ from libs.gdk_config import GdkConfig
 
 ACCOUNT = boto3.client('sts').get_caller_identity().get('Account')
 COMPONENT_DOCKER_APPLICATION_MANAGER = 'aws.greengrass.DockerApplicationManager'
-COMPONENT_SECRET_MANAGER = 'aws.greengrass.SecretManager'
+COMPONENT_SEC_MANAGER = 'aws.greengrass.SecretManager'
 
 def get_newest_component_version(component_name):
     """ Gets the newest version of a component """
@@ -81,14 +81,14 @@ def update_deployment(deployment):
         deployment['components'].update({COMPONENT_DOCKER_APPLICATION_MANAGER: {'componentVersion': version}})
 
     # If Secret manager is not in the deployment, add the latest version
-    if COMPONENT_SECRET_MANAGER not in deployment['components']:
-        version = get_newest_component_version(COMPONENT_SECRET_MANAGER)
-        print(f'Adding {COMPONENT_SECRET_MANAGER} {version} to the deployment')
+    if COMPONENT_SEC_MANAGER not in deployment['components']:
+        version = get_newest_component_version(COMPONENT_SEC_MANAGER)
+        print(f'Adding {COMPONENT_SEC_MANAGER} {version} to the deployment')
         cloud_secrets = [{"arn": secret_value['ARN']}]
     else:
         # If it's already in the deployment, use the current version
-        version = deployment['components'][COMPONENT_SECRET_MANAGER]['componentVersion']
-        merge_str = deployment['components'][COMPONENT_SECRET_MANAGER]['configurationUpdate']['merge']
+        version = deployment['components'][COMPONENT_SEC_MANAGER]['componentVersion']
+        merge_str = deployment['components'][COMPONENT_SEC_MANAGER]['configurationUpdate']['merge']
         cloud_secrets = json.loads(merge_str)['cloudSecrets']
 
         # Add our secret to the list of configured secrets
@@ -97,7 +97,7 @@ def update_deployment(deployment):
             cloud_secrets.append({"arn": secret_value['ARN']})
 
     # Update Secret Manager with the appropriate version and configuration
-    deployment['components'].update({COMPONENT_SECRET_MANAGER: {
+    deployment['components'].update({COMPONENT_SEC_MANAGER: {
         'componentVersion': version,
         'configurationUpdate': {'merge': '{"cloudSecrets":' + json.dumps(cloud_secrets) + '}'}}
     })

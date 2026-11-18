@@ -7,16 +7,24 @@ before_script:
   - python --version
   - pip install -r requirements.txt
   - pylint --version
+  - mypy --version
   - pytest --version
+  - bandit --version
 
 stages:
   - Static Analysis
   - Unit Tests
+  - Security Scan
 
 pylint:
   stage: Static Analysis
   script:
   - pylint artifacts libs tests *.py
+
+mypy:
+  stage: Static Analysis
+  script:
+  - mypy --ignore-missing-imports artifacts
 
 pytest:
   stage: Unit Tests
@@ -26,3 +34,8 @@ pytest:
     when: always
     reports:
       junit: junit.xml
+
+bandit:
+  stage: Security Scan
+  script:
+  - bandit -r -v artifacts libs *.py
